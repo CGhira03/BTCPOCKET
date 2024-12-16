@@ -1,177 +1,226 @@
 <template>
-    <div class="transaction-analisis">
-      <h2>Análisis de Inversiones</h2>
-      <button @click="goBack">Volver a Inicio</button>
-  
-      <!-- Sección de resumen de inversiones -->
-      <div v-if="analytics">
-        <h3>Resumen de Inversiones</h3>
-        <p><strong>Total invertido:</strong> ${{ totalInvested.toFixed(2) }}</p>
-        <p><strong>Valor actual:</strong> ${{ currentValue.toFixed(2) }}</p>
-        <p><strong>Ganancia/Pérdida:</strong> ${{ gainLoss.toFixed(2) }}</p>
-      </div>
-  
-      <!-- Tabla con detalles de la inversión por criptomoneda -->
-      <h3>Detalle por Criptomoneda</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Criptomoneda</th>
-            <th>Cantidad Total</th>
-            <th>Monto Invertido</th>
-            <th>Valor Actual</th>
-            <th>Ganancia/Pérdida</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(data, cryptoCode) in analytics?.cryptos" :key="cryptoCode">
-            <td>{{ cryptoCode.toUpperCase() }}</td>
-            <td>{{ data.totalAmount.toFixed(4) }}</td>
-            <td>${{ data.totalInvested.toFixed(2) }}</td>
-            <td>${{ data.currentValue.toFixed(2) }}</td>
-            <td :class="{ positive: data.gainLoss >= 0, negative: data.gainLoss < 0 }">
-              ${{ data.gainLoss.toFixed(2) }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </template>
-  
-  <script>
-  import axios from "axios";
-  import { useUserStore } from "../store/user";
-  import { useRouter } from "vue-router";
-  
-  export default {
-    data() {
-      return {
-        transactions: [],
-        analytics: null,
-        userId: null,
-      };
-    },
-    setup() {
-      const router = useRouter();
-      const goBack = ()  => {
-        router.push("/principal");
-      }
-      return { goBack }; // Obtener ID del usuario desde la tienda
-    },
-    methods: {
-      async fetchTransactions() {
-        try {
-          const response = await axios.get(
-            "https://laboratorio3-f36a.restdb.io/rest/transactions",
-            {
-              headers: {
-                "Content-Type": "application/json",
-                "x-apikey": "YOUR_API_KEY",
-              },
-            }
-          );
-  
-          // Solo obtener las transacciones de este usuario
-          this.transactions = response.data.filter(
-            (transaction) => transaction.user_id === this.userId
-          );
-  
-          this.performAnalytics();
-        } catch (error) {
-          console.error("Error al obtener las transacciones:", error);
-        }
-      },
-      performAnalytics() {
-        const cryptoPrices = {
-          usdc: 1, // Precio actual de referencia para USDC
-          bitcoin: 40000, // Precio simulado para Bitcoin
-          ethereum: 2500, // Precio simulado para Ethereum
-        };
-  
-        const analytics = {
-          totalInvested: 0,
-          currentValue: 0,
-          cryptos: {},
-        };
-  
-        // Analizar todas las transacciones para calcular inversión total
-        this.transactions.forEach((transaction) => {
-          const cryptoCode = transaction.crypto_code;
-          const amount = parseFloat(transaction.crypto_amount);
-          const money = parseFloat(transaction.money);
-  
-          if (!analytics.cryptos[cryptoCode]) {
-            analytics.cryptos[cryptoCode] = {
-              totalAmount: 0,
-              totalInvested: 0,
-              currentValue: 0,
-              gainLoss: 0,
-            };
+  <header>
+    <button @click="goBack" class="btnGoBack">Volver Inicio</button>
+    <img src="@/assets/logo.png" alt="Logo"> 
+  </header>
+  <div class="financial-analysis">
+    <h2>Análisis de Estado Actual</h2>
+
+    <!-- Tabla con detalles de criptomonedas -->
+    <table>
+      <thead>
+        <tr>
+          <th>Criptomoneda</th>
+          <th>Cantidad</th>
+          <th>Dinero</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(crypto, code) in cryptoData" :key="code">
+          <td>{{ code }}</td>
+          <td>{{ crypto.amount.toFixed(2) }}</td>
+          <td>{{ formatCurrency(crypto.totalValue) }}</td>
+        </tr>
+        <tr>
+          <td><strong>Total</strong></td>
+          <td></td>
+          <td><strong>{{ formatCurrency(totalMoney) }}</strong></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Tabla con resultado de inversiones -->
+    <h2>Resultado de Inversiones</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Criptomoneda</th>
+          <th>Resultado</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(result, code) in investmentResults" :key="code">
+          <td>{{ code }}</td>
+          <td :class="result > 0 ? 'positive' : 'negative'">
+            {{ result >= 0 ? '+' : '-' }} {{ formatCurrency(Math.abs(result)) }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</template>
+
+<script>
+import axios from "axios";
+import { useRouter } from "vue-router";
+
+export default {
+  data() {
+    return {
+      transactions: [],
+      cryptoData: {}, // Datos procesados de criptomonedas
+      totalMoney: 0,  // Total de dinero calculado
+      investmentResults: {}, // Resultados de las inversiones
+    };
+  },
+  setup() {
+    const router = useRouter();
+    const goBack = () => {
+      router.push("/principal");
+    };
+    return { goBack };
+  },
+  methods: {
+    async fetchTransactions() {
+      try {
+        const userId = "valor_introducido_login"; // Reemplazar con el user_id real
+        const response = await axios.get(
+          `https://laboratorio3-f36a.restdb.io/rest/transactions?q={"user_id": "${userId}"}`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              "x-apikey": "YOUR_API_KEY", // Reemplazar con tu API KEY
+            },
           }
-  
-          if (transaction.action === "purchase") {
-            analytics.cryptos[cryptoCode].totalAmount += amount;
-            analytics.cryptos[cryptoCode].totalInvested += money;
-          }
-  
-          // Actualizar la inversión con los precios actuales
-          const price = cryptoPrices[cryptoCode] || 0;
-          analytics.cryptos[cryptoCode].currentValue =
-            analytics.cryptos[cryptoCode].totalAmount * price;
-          analytics.cryptos[cryptoCode].gainLoss =
-            analytics.cryptos[cryptoCode].currentValue -
-            analytics.cryptos[cryptoCode].totalInvested;
-        });
-  
-        // Sumar valores para el análisis global
-        analytics.totalInvested = this.transactions
-          .filter((t) => t.action === "purchase")
-          .reduce((sum, t) => sum + parseFloat(t.money), 0);
-  
-        analytics.currentValue = Object.values(analytics.cryptos).reduce(
-          (sum, crypto) => sum + crypto.currentValue,
-          0
         );
-  
-        analytics.gainLoss = analytics.currentValue - analytics.totalInvested;
-  
-        this.analytics = analytics;
-      },
+
+        this.transactions = response.data;
+        await this.processData();
+      } catch (error) {
+        console.error("Error al obtener transacciones:", error);
+      }
     },
-    mounted() {
-      const userStore = useUserStore();
-      this.userId = userStore.userId; // Obtener el ID del usuario
-      this.fetchTransactions();
+
+    async processData() {
+      const btcPrice = await this.fetchCryptoPrice();
+      const cryptoData = {};
+      const investmentResults = {};
+
+      // Inicializar variables de resultado
+      let usdcProfit = 0;
+      let bitcoinLoss = 0;
+      let totalBitcoinSpent = 0;
+      let totalBitcoinOwned = 0;
+
+      this.transactions.forEach((transaction) => {
+        const code = transaction.crypto_code;
+        const amount = parseFloat(transaction.crypto_amount);
+        const money = parseFloat(transaction.money);
+
+        if (!cryptoData[code]) {
+          cryptoData[code] = { amount: 0, totalValue: 0 };
+        }
+
+        if (transaction.action === "purchase") {
+          cryptoData[code].amount += amount;
+          if (code === "bitcoin") totalBitcoinSpent += money;
+        } else if (transaction.action === "sale") {
+          cryptoData[code].amount -= amount;
+        }
+
+        // Calcular ganancia/pérdida para USDC
+        if (code === "usdc") {
+          usdcProfit += transaction.action === "sale" ? money : -money;
+        }
+      });
+
+      // Calcular resultado de Bitcoin
+      totalBitcoinOwned = cryptoData["bitcoin"]?.amount || 0;
+      const currentBitcoinValue = totalBitcoinOwned * btcPrice;
+      bitcoinLoss = currentBitcoinValue - totalBitcoinSpent;
+
+      // Guardar resultados finales
+      investmentResults["USDC"] = usdcProfit;
+      investmentResults["Bitcoin"] = bitcoinLoss;
+
+      this.cryptoData = cryptoData;
+      this.totalMoney = currentBitcoinValue;
+      this.investmentResults = investmentResults;
     },
-  };
-  </script>
-  
-  <style scoped>
-  .transaction-analisis {
-    max-width: 900px;
-    margin: auto;
-    padding: 20px;
-  }
-  
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 20px 0;
-  }
-  
-  thead th,
-  td {
-    padding: 10px;
-    text-align: left;
-    border: 1px solid #ddd;
-  }
-  
-  .positive {
-    color: green;
-  }
-  
-  .negative {
-    color: red;
-  }
-  </style>
-  
+
+    async fetchCryptoPrice() {
+      try {
+        const response = await axios.get(
+          "https://criptoya.com/api/satoshitango/btc/ars"
+        );
+        return response.data.totalBid;
+      } catch (error) {
+        console.error("Error al obtener precio de Bitcoin:", error);
+        return 0;
+      }
+    },
+
+    formatCurrency(value) {
+      return `$ ${value.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
+    },
+  },
+
+  mounted() {
+    this.fetchTransactions();
+  },
+};
+</script>
+
+<style scoped>
+.financial-analysis {
+  max-width: 800px;
+  margin: auto;
+  padding: 20px;
+}
+
+h2, h3 {
+  text-align: center;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: center;
+}
+
+th {
+  background-color: #f4f4f4;
+}
+
+tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.positive {
+  color: green;
+}
+
+.negative {
+  color: red;
+}
+img{
+  width: 60px;
+  padding-left: 60%;
+}
+.btnGoBack{
+  background-color: #3533cd;
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btnGoBack:hover{
+  background-color: #000000;
+  color: #ffffff;
+}
+header{
+  background-color: #bfa3f7;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 10px;
+}
+</style>
