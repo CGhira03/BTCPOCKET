@@ -1,49 +1,64 @@
 <template>
   <div class="wrapper fadeInDown">
     <div id="formContent">
-      
-        <img src="@/assets/logo.png" alt="Logo">      
-        <form @submit.prevent="handleLogin">
-          <label for="id">Ingrese su ID: </label>
-          <br>
-          <input type="text" id="login" class="fadeIn second" v-model="userId" placeholder="Enter User ID" required>
-          <br>
-          <button type="submit">Iniciar Sesion</button>
-        </form>
-        <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
-
+      <img src="@/assets/logo.png" alt="Logo">
+      <form @submit.prevent="handleLogin">
+        <label for="id">Ingrese su ID: </label>
+        <br>
+        <input
+          type="text"
+          id="login"
+          class="fadeIn second"
+          v-model="userId"
+          placeholder="Enter User ID"
+          required
+        />
+        <br>
+        <button type="submit">Iniciar Sesión</button>
+      </form>
+      <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
     </div>
   </div>
 </template>
-  
-  <script>
-  import { useUserStore } from '../store/user';
-  import { useRouter } from 'vue-router';
-  import { ref } from 'vue';
 
-  
-  export default {
-    setup() {
-      const userId = ref('');
-      const errorMessage = ref('');
-      const userStore = useUserStore();
-      const router = useRouter();
-  
-      const handleLogin = () => {
-        if (userId.value.trim()) {
-          console.log('Logging in with User ID:', userId.value);
-          userStore.login(userId.value); // Guarda el usuario en la tienda
-          console.log('User Store State after Login:', userStore.userId);
-          router.push('/principal'); // Redirige al Dashboard
-        } else {
-          errorMessage.value = 'User ID is required!';
+<script>
+import { useRouter } from "vue-router"; // Para redirigir al usuario
+import { ref } from "vue";              // Para crear variables reactivas
+
+export default {
+  setup() {
+    const userId = ref("");            // Variable para guardar el ID del usuario
+    const errorMessage = ref("");      // Mensaje de error si algo sale mal
+    const router = useRouter();        // Redirige al usuario
+
+    // Función para manejar el inicio de sesión
+    const handleLogin = async () => {
+      // Verificar si el usuario ingresó algo
+      if (userId.value.trim()) {
+        try {
+          // Guardar el ID del usuario en el navegador
+          localStorage.setItem("user_id", userId.value.trim());
+
+          // Redirigir al usuario a la página principal
+          router.push("/principal");
+        } catch (error) {
+          // Mostrar un mensaje de error si algo falla
+          console.error("Error al iniciar sesión:", error);
+          errorMessage.value = "Error al intentar iniciar sesión.";
         }
-      };
-  
-      return { userId, errorMessage, handleLogin };
-    },
-  };
-  </script>
+      } else {
+        // Si el campo está vacío, mostrar un error
+        errorMessage.value = "El ID de usuario es obligatorio.";
+      }
+    };
+
+    // Retornar las variables y funciones para usarlas en el HTML
+    return { userId, errorMessage, handleLogin };
+  },
+};
+</script>
+
+
   
 <style scoped>
 img{

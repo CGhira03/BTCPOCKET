@@ -31,11 +31,11 @@
       };
   
       const goToTransaction = () => {
-      router.push("/transaccion");
+      router.push("/transactions");
       };
 
       const goHistory = () => {
-      router.push("/historial");
+      router.push("/history");
       };
 
       const goAnalisis = () => {

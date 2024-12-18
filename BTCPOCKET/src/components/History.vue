@@ -76,40 +76,7 @@ import { useRouter } from "vue-router";
 export default {
   data() {
     return {
-      transactions: [
-        {
-          _id: "60eb149ba4666761000216fc",
-          crypto: "Bitcoin",
-          amount: 0.005,
-          total: 350000,
-          action: "Compra",
-          date: "2024-06-12"
-        },
-        {
-          _id: "60eb148da4666761000216f9",
-          crypto: "Ethereum",
-          amount: 0.75,
-          total: 210000,
-          action: "Venta",
-          date: "2024-06-11"
-        },
-        {
-          _id: "60eb14aba466676100021700",
-          crypto: "USDC",
-          amount: 250,
-          total: 100000,
-          action: "Compra",
-          date: "2024-06-10"
-        },
-        {
-          _id: "60eb14b1a466676100021703",
-          crypto: "Bitcoin",
-          amount: 0.01,
-          total: 700000,
-          action: "Venta",
-          date: "2024-06-09"
-        }
-      ],
+      transactions: [],
       selectedTransaction: null,
       isModalOpen: false,
       userId: useUserStore().userId, // Asumimos que el ID se obtiene del store
