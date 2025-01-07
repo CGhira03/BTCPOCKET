@@ -1,6 +1,5 @@
 <template>
   <div class="transaction-history">
-    <!-- Header -->
     <header>
       <button @click="goBack" class="btnGoBack">Volver Inicio</button>
       <img src="@/assets/logo.png" alt="Logo">  
@@ -8,7 +7,6 @@
 
     <h2>Historial de Transacciones</h2>
 
-    <!-- Tabla responsiva -->
     <div class="table-container">
       <table>
         <thead>
@@ -37,7 +35,6 @@
       </table>
     </div>
 
-    <!-- Modal de edición -->
     <div v-if="isModalOpen" class="modal">
       <div class="modal-content">
         <span class="close-btn" @click="closeModal">&times;</span>
@@ -52,14 +49,28 @@
             <option value="sale">Venta</option>
           </select><br /><br />
 
-          <label>Criptomoneda:</label>
-          <input type="text" v-model="selectedTransaction.crypto_code" required /><br /><br />
+          <label for="crypto-edit">Criptomoneda:</label>
+          <select
+            id="crypto-edit"
+            v-model="selectedTransaction.crypto_code"
+            @change="updateEditPrice"
+            required
+          >
+            <option value="BTC">Bitcoin (BTC)</option>
+            <option value="ETH">Ethereum (ETH)</option>
+            <option value="USDT">USDC</option>
+          </select><br /><br />
 
           <label>Cantidad:</label>
-          <input type="number" v-model="selectedTransaction.crypto_amount" step="0.0001" required /><br /><br />
+          <input
+            type="number"
+            v-model.number="selectedTransaction.crypto_amount"
+            required
+            min="0.001"
+          /><br /><br />
 
-          <label>Monto (ARS):</label>
-          <input type="number" v-model="selectedTransaction.money" required /><br /><br />
+          <p>Precio unitario (ARS): {{ selectedTransaction.money.toFixed(2) }}</p>
+          <p>Total (ARS): {{ (selectedTransaction.crypto_amount * selectedTransaction.money).toFixed(2) }}</p>
 
           <button type="submit">Guardar Cambios</button>
         </form>
@@ -72,6 +83,7 @@
 import axios from "axios";
 import { useUserStore } from "../store/user";
 import { useRouter } from "vue-router";
+import { getCryptoPrice } from "@/services/api";
 
 export default {
   data() {
@@ -79,8 +91,8 @@ export default {
       transactions: [],
       selectedTransaction: null,
       isModalOpen: false,
-      userId: useUserStore().userId, // Asumimos que el ID se obtiene del store
-      apiKey: "your-api-key", // Reemplaza con tu clave de API
+      userId: useUserStore().userId,
+      apiKey: "60eb09146661365596af552f",
     };
   },
   setup() {
@@ -89,7 +101,6 @@ export default {
     return { goBack };
   },
   methods: {
-    // Obtener historial de transacciones
     async fetchTransactions() {
       const url = `https://laboratorio3-f36a.restdb.io/rest/transactions?q={\"user_id\": \"${this.userId}\"}`;
       try {
@@ -99,39 +110,54 @@ export default {
         this.transactions = response.data;
       } catch (error) {
         console.error("Error al obtener transacciones: ", error);
+        alert("No se pudo cargar el historial de transacciones.");
       }
     },
 
-    // Abrir modal para editar
     openModal(transaction) {
       this.selectedTransaction = { ...transaction };
       this.isModalOpen = true;
     },
 
-    // Guardar cambios con PATCH
     async saveChanges() {
-      const url = `https://laboratorio3-f36a.restdb.io/rest/transactions/${this.selectedTransaction._id}`;
       try {
+        const cryptoPrice = await getCryptoPrice(this.selectedTransaction.crypto_code);
+        this.selectedTransaction.money = cryptoPrice;
+
+        const url = `https://laboratorio3-f36a.restdb.io/rest/transactions/${this.selectedTransaction._id}`;
         await axios.patch(url, this.selectedTransaction, {
           headers: { "x-apikey": this.apiKey },
         });
+        alert("Transacción actualizada con éxito.");
         this.fetchTransactions();
         this.closeModal();
       } catch (error) {
         console.error("Error al guardar cambios: ", error);
+        alert("Error al guardar los cambios de la transacción.");
       }
     },
 
-    // Eliminar transacción
     async deleteTransaction(id) {
       const url = `https://laboratorio3-f36a.restdb.io/rest/transactions/${id}`;
       try {
         await axios.delete(url, {
           headers: { "x-apikey": this.apiKey },
         });
+        alert("Transacción eliminada con éxito.");
         this.fetchTransactions();
       } catch (error) {
         console.error("Error al borrar transacción: ", error);
+        alert("Error al eliminar la transacción.");
+      }
+    },
+
+    async updateEditPrice() {
+      try {
+        const price = await getCryptoPrice(this.selectedTransaction.crypto_code);
+        this.selectedTransaction.money = price;
+      } catch (error) {
+        console.error("Error al obtener el precio actualizado: ", error);
+        alert("No se pudo actualizar el precio de la criptomoneda.");
       }
     },
 
@@ -140,7 +166,6 @@ export default {
       this.selectedTransaction = null;
     },
 
-    // Formatear fecha
     formatDate(date) {
       return new Date(date).toLocaleString();
     },
@@ -151,8 +176,8 @@ export default {
 };
 </script>
 
+
 <style scoped>
-/* Contenedor principal */
 .transaction-history {
   padding: 10px;
   max-width: 100%;

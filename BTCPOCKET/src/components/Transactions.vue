@@ -13,7 +13,7 @@
         <h3>Nueva Compra</h3>
         <form @submit.prevent="submitPurchase">
           <label for="crypto-buy">Criptomoneda:</label>
-          <select id="crypto-buy" v-model="purchase.cryptoCode" @change="updateBuyPrice" required>
+          <select id="crypto-buy" v-model="purchase.cryptoCode" @change="updateBuyMoney" required>
             <option value="BTC">Bitcoin (BTC)</option>
             <option value="ETH">Ethereum (ETH)</option>
             <option value="USDT">USDC</option>
@@ -30,7 +30,7 @@
             />
           </div>
 
-          <p>Precio unitario (ARS): {{ purchase.price.toFixed(2) }}</p>
+          <p>Precio unitario (ARS): {{ purchase.money.toFixed(2) }}</p>
           <p>Total a pagar: {{ calculateBuyTotal().toFixed(2) }} ARS</p>
           <button type="submit" :disabled="!canPurchase">Comprar</button>
         </form>
@@ -41,7 +41,7 @@
         <h3>Nueva Venta</h3>
         <form @submit.prevent="submitSale">
           <label for="crypto-sell">Criptomoneda:</label>
-          <select id="crypto-sell" v-model="sale.cryptoCode" @change="updateSellPrice" required>
+          <select id="crypto-sell" v-model="sale.cryptoCode" @change="updateSellMoney" required>
             <option value="BTC">Bitcoin (BTC)</option>
             <option value="ETH">Ethereum (ETH)</option>
             <option value="USDT">USDC</option>
@@ -58,7 +58,7 @@
             />
           </div>
 
-          <p>Precio unitario (ARS): {{ sale.price.toFixed(2) }}</p>
+          <p>Precio unitario (ARS): {{ sale.money.toFixed(2) }}</p>
           <p>Total a recibir: {{ calculateSellTotal().toFixed(2) }} ARS</p>
           <button type="submit" :disabled="!canSell">Vender</button>
         </form>
@@ -74,58 +74,57 @@
 <script>
 import { useRouter } from "vue-router";
 import { ref } from "vue";
-import { createTransaction, getCryptoPrice } from "@/services/api"; // Importando la función de obtener precio
+import { getCryptoPrice, createTransaction } from "@/services/api"; 
 
 export default {
   setup() {
     const router = useRouter();
     const goBack = () => router.push("/principal");
-    // Datos de compra y venta
+
     const purchase = ref({
       cryptoCode: "",
       amount: 0,
-      price: 0,
+      money: 0,
     });
+
     const sale = ref({
       cryptoCode: "",
       amount: 0,
-      price: 0,
+      money: 0,
     });
+
     const successMessage = ref("");
     const errorMessage = ref("");
 
-    // Validaciones
     const canPurchase = () =>
       purchase.value.cryptoCode &&
       purchase.value.amount > 0 &&
-      purchase.value.price > 0;
+      purchase.value.money > 0;
+
     const canSell = () =>
-      sale.value.cryptoCode && sale.value.amount > 0 && sale.value.price > 0;
+      sale.value.cryptoCode && sale.value.amount > 0 && sale.value.money > 0;
 
-    // Cálculos de totales
-    const calculateBuyTotal = () => purchase.value.amount * purchase.value.price;
-    const calculateSellTotal = () => sale.value.amount * sale.value.price;
+    const calculateBuyTotal = () => purchase.value.amount * purchase.value.money;
+    const calculateSellTotal = () => sale.value.amount * sale.value.money;
 
-    // Funciones para actualizar precios
-    const updateBuyPrice = async () => {
+    const updateBuyMoney = async () => {
       try {
-        const price = await getCryptoPrice(purchase.value.cryptoCode); // Llamada a la API para obtener el precio
-        purchase.value.price = price;
+        const money = await getCryptoPrice(purchase.value.cryptoCode); 
+        purchase.value.money = money;
       } catch (error) {
-        errorMessage.value = error.message; // Mostrar el error detallado
+        errorMessage.value = error.message; 
       }
     };
 
-    const updateSellPrice = async () => {
+    const updateSellMoney = async () => {
       try {
-        const price = await getCryptoPrice(sale.value.cryptoCode); // Llamada a la API para obtener el precio
-        sale.value.price = price;
+        const money = await getCryptoPrice(sale.value.cryptoCode); 
+        sale.value.money = money;
       } catch (error) {
-        errorMessage.value = error.message; // Mostrar el error detallado
+        errorMessage.value = error.message;
       }
     };
 
-    // Registro de transacciones
     const submitPurchase = async () => {
       try {
         const payload = {
@@ -133,13 +132,16 @@ export default {
           action: "purchase",
           crypto_code: purchase.value.cryptoCode,
           crypto_amount: purchase.value.amount,
-          price: purchase.value.price,
+          money: purchase.value.money,
           datetime: new Date().toISOString(),
         };
-        const response = await createTransaction(payload);
+
+        await createTransaction(payload);
         successMessage.value = "¡Compra registrada con éxito!";
+        errorMessage.value = "";
         clearPurchaseForm();
       } catch (error) {
+        successMessage.value = "";
         errorMessage.value = "Error al registrar la compra.";
       }
     };
@@ -151,13 +153,16 @@ export default {
           action: "sale",
           crypto_code: sale.value.cryptoCode,
           crypto_amount: sale.value.amount,
-          price: sale.value.price,
+          money: sale.value.money,
           datetime: new Date().toISOString(),
         };
-        const response = await createTransaction(payload);
+
+        await createTransaction(payload);
         successMessage.value = "¡Venta registrada con éxito!";
+        errorMessage.value = "";
         clearSaleForm();
       } catch (error) {
+        successMessage.value = "";
         errorMessage.value = "Error al registrar la venta.";
       }
     };
@@ -165,13 +170,13 @@ export default {
     const clearPurchaseForm = () => {
       purchase.value.cryptoCode = "";
       purchase.value.amount = 0;
-      purchase.value.price = 0;
+      purchase.value.money = 0;
     };
 
     const clearSaleForm = () => {
       sale.value.cryptoCode = "";
       sale.value.amount = 0;
-      sale.value.price = 0;
+      sale.value.money = 0;
     };
 
     return {
@@ -186,14 +191,12 @@ export default {
       calculateSellTotal,
       submitPurchase,
       submitSale,
-      updateBuyPrice,
-      updateSellPrice,
+      updateBuyMoney,
+      updateSellMoney,
     };
   },
 };
 </script>
-
-
 
 
 <style scoped>

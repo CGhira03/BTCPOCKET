@@ -71,18 +71,25 @@ export default {
     return { goBack };
   },
   methods: {
+    // Obtener transacciones del usuario
     async fetchTransactions() {
       try {
-        const userId = "valor_introducido_login"; // Reemplazar con el user_id real
+        const user_id = localStorage.getItem("user_id");
+        if (!user_id) {
+          throw new Error("El user_id no está definido en el localStorage.");
+        }
+
+        const apiKey = "60eb09146661365596af552f"; // Clave de API
         const response = await axios.get(
-          `https://laboratorio3-f36a.restdb.io/rest/transactions?q={"user_id": "${userId}"}`,
+          `https://laboratorio3-f36a.restdb.io/rest/transactions?q={"user_id": "${user_id}"}`,
           {
             headers: {
               "Content-Type": "application/json",
-              "x-apikey": "YOUR_API_KEY", // Reemplazar con tu API KEY
+              "x-apikey": apiKey,
             },
           }
         );
+
 
         this.transactions = response.data;
         await this.processData();
@@ -91,65 +98,68 @@ export default {
       }
     },
 
+    // Procesar y calcular datos financieros
     async processData() {
-      const btcPrice = await this.fetchCryptoPrice();
-      const cryptoData = {};
-      const investmentResults = {};
+      try {
+        const btcPrice = await this.fetchCryptoPrice("BTC");
+        const ethPrice = await this.fetchCryptoPrice("ETH");
+        const usdtPrice = await this.fetchCryptoPrice("USDT");
 
-      // Inicializar variables de resultado
-      let usdcProfit = 0;
-      let bitcoinLoss = 0;
-      let totalBitcoinSpent = 0;
-      let totalBitcoinOwned = 0;
+        const cryptoData = {};
+        const investmentResults = {};
 
-      this.transactions.forEach((transaction) => {
-        const code = transaction.crypto_code;
-        const amount = parseFloat(transaction.crypto_amount);
-        const money = parseFloat(transaction.money);
+        let totalMoney = 0;
 
-        if (!cryptoData[code]) {
-          cryptoData[code] = { amount: 0, totalValue: 0 };
-        }
+        this.transactions.forEach((transaction) => {
+          const code = transaction.crypto_code;
+          const amount = parseFloat(transaction.crypto_amount);
+          const money = parseFloat(transaction.money);
 
-        if (transaction.action === "purchase") {
-          cryptoData[code].amount += amount;
-          if (code === "bitcoin") totalBitcoinSpent += money;
-        } else if (transaction.action === "sale") {
-          cryptoData[code].amount -= amount;
-        }
+          if (!cryptoData[code]) {
+            cryptoData[code] = { amount: 0, totalValue: 0 };
+          }
 
-        // Calcular ganancia/pérdida para USDC
-        if (code === "usdc") {
-          usdcProfit += transaction.action === "sale" ? money : -money;
-        }
-      });
+          // Actualizar cantidades y valores totales
+          if (transaction.action === "purchase") {
+            cryptoData[code].amount += amount;
+          } else if (transaction.action === "sale") {
+            cryptoData[code].amount -= amount;
+          }
 
-      // Calcular resultado de Bitcoin
-      totalBitcoinOwned = cryptoData["bitcoin"]?.amount || 0;
-      const currentBitcoinValue = totalBitcoinOwned * btcPrice;
-      bitcoinLoss = currentBitcoinValue - totalBitcoinSpent;
+          // Cálculo del valor actual
+          const currentPrice =
+            code === "BTC" ? btcPrice : code === "ETH" ? ethPrice : usdtPrice;
 
-      // Guardar resultados finales
-      investmentResults["USDC"] = usdcProfit;
-      investmentResults["Bitcoin"] = bitcoinLoss;
+          cryptoData[code].totalValue = cryptoData[code].amount * currentPrice;
+          totalMoney += cryptoData[code].totalValue;
 
-      this.cryptoData = cryptoData;
-      this.totalMoney = currentBitcoinValue;
-      this.investmentResults = investmentResults;
+          // Calcular resultados de inversión
+          investmentResults[code] =
+            (cryptoData[code].amount * currentPrice) - money;
+        });
+
+        this.cryptoData = cryptoData;
+        this.totalMoney = totalMoney;
+        this.investmentResults = investmentResults;
+      } catch (error) {
+        console.error("Error al procesar datos financieros:", error);
+      }
     },
 
-    async fetchCryptoPrice() {
+    // Obtener precio en tiempo real de una criptomoneda
+    async fetchCryptoPrice(cryptoCode) {
       try {
         const response = await axios.get(
-          "https://criptoya.com/api/satoshitango/btc/ars"
+          `https://criptoya.com/api/satoshitango/${cryptoCode.toLowerCase()}/ars`
         );
-        return response.data.totalBid;
+        return response.data.totalBid || 0;
       } catch (error) {
-        console.error("Error al obtener precio de Bitcoin:", error);
+        console.error(`Error al obtener precio de ${cryptoCode}:`, error);
         return 0;
       }
     },
 
+    // Formatear valores como moneda
     formatCurrency(value) {
       return `$ ${value.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
     },
@@ -199,11 +209,13 @@ tr:nth-child(even) {
 .negative {
   color: red;
 }
-img{
+
+img {
   width: 60px;
   padding-left: 60%;
 }
-.btnGoBack{
+
+.btnGoBack {
   background-color: #3533cd;
   color: #ffffff;
   border: none;
@@ -212,11 +224,12 @@ img{
   cursor: pointer;
 }
 
-.btnGoBack:hover{
+.btnGoBack:hover {
   background-color: #000000;
   color: #ffffff;
 }
-header{
+
+header {
   background-color: #bfa3f7;
   display: flex;
   align-items: center;

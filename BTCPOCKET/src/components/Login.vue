@@ -22,37 +22,30 @@
 </template>
 
 <script>
-import { useRouter } from "vue-router"; // Para redirigir al usuario
-import { ref } from "vue";              // Para crear variables reactivas
+import { useRouter } from "vue-router";
+import { ref } from "vue";           
 
 export default {
   setup() {
-    const userId = ref("");            // Variable para guardar el ID del usuario
-    const errorMessage = ref("");      // Mensaje de error si algo sale mal
-    const router = useRouter();        // Redirige al usuario
+    const userId = ref("");            
+    const errorMessage = ref("");      
+    const router = useRouter();        
 
-    // Función para manejar el inicio de sesión
     const handleLogin = async () => {
-      // Verificar si el usuario ingresó algo
       if (userId.value.trim()) {
         try {
-          // Guardar el ID del usuario en el navegador
           localStorage.setItem("user_id", userId.value.trim());
 
-          // Redirigir al usuario a la página principal
           router.push("/principal");
         } catch (error) {
-          // Mostrar un mensaje de error si algo falla
           console.error("Error al iniciar sesión:", error);
           errorMessage.value = "Error al intentar iniciar sesión.";
         }
       } else {
-        // Si el campo está vacío, mostrar un error
         errorMessage.value = "El ID de usuario es obligatorio.";
       }
     };
 
-    // Retornar las variables y funciones para usarlas en el HTML
     return { userId, errorMessage, handleLogin };
   },
 };
